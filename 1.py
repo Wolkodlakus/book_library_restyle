@@ -38,7 +38,13 @@ def parse_book_page(url, id_book):
     print(genres)
     print()
 
-    return str_book[0].strip(), str_book[1].strip(), img_path, comments
+    return {
+        'title': str_book[0].strip(),
+        'author': str_book[1].strip(),
+        'genres': genres,
+        'img_path': img_path,
+        'comments': comments
+    }
 
 
 def download_txt(url, filename, folder='books/'):
@@ -71,7 +77,7 @@ def find_filename_in_url(url_string):
 def download_image(url, folder='images/', params=''):
     name_img = find_filename_in_url(url)
     os.makedirs(folder, exist_ok=True)
-    response = requests.get(url_img, params=params)
+    response = requests.get(url, params=params)
     response.raise_for_status()
     with open(Path(folder, name_img), 'wb') as file:
         file.write(response.content)
@@ -85,11 +91,11 @@ if __name__ == '__main__':
 
     for id_book in range(1, 11):
         try:
-            title, _, url_img, comments = parse_book_page(url_page_book, id_book)
-            filename = f'{id_book}. {title}.txt'
+            book_data = parse_book_page(url_page_book, id_book)
+            filename = f'{id_book}. {book_data["title"]}.txt'
             download_txt(f'{url_txt}?id={id_book}', filename, book_folder)
-            download_image(url_img)
+            download_image(book_data['img_path'])
 
         except requests.HTTPError:
-            print(f'На сайте нет книги {id_book} {title}')
+            print(f'На сайте нет книги {id_book} {book_data["title"]}')
             print()
