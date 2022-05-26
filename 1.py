@@ -24,11 +24,18 @@ def parse_book_page(url, id_book):
     soup = BeautifulSoup(response.text, 'lxml')
     str_book = soup.find('h1').text.split(" :: ")
     img_path = urljoin(url, soup.find(class_='bookimage').find('img')['src'])
+    comments = []
+    for comment in soup.find(id='content').find_all('span', class_='black'):
+        comments.append(comment.text)
+    comments_soup = soup.find(id='content').find_all('span', class_='black')
+    genres = []
+    for genre in soup.find('span', class_='d_book').find_all('a'):
+        genres.append(genre.text)
 
-    comments = soup.find(id='content').find_all('span', class_='black')
     print(str_book[0].strip())
-    for comment in comments:
-        print(comment.text)
+    #for comment in comments:
+    #    print(comment)
+    print(genres)
     print()
 
     return str_book[0].strip(), str_book[1].strip(), img_path, comments
