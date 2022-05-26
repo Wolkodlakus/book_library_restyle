@@ -49,14 +49,12 @@ def download_txt(url, filename, folder='books/'):
 
 def find_filename_in_url(url_string):
     """Поиск имени файла в url"""
-    #filepath = urlsplit(unquote(url_string)).path
-    filepath = urlparse(unquote(url_string)).path
+    filepath = urlsplit(unquote(url_string)).path
     _, filename = os.path.split(filepath)
     return filename
 
 def download_image(url, folder='images/', params=''):
     name_img = find_filename_in_url(url)
-    #name_img = urlsplit(url, )
     os.makedirs(folder, exist_ok=True)
     response = requests.get(url_img, params=params)
     response.raise_for_status()
