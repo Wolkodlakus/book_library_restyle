@@ -48,4 +48,5 @@ Thumbs.db
 /mvnw.cmd
 /mvnw
 /venv
-/books
+/books/
+/images/
