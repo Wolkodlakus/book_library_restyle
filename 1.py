@@ -3,7 +3,8 @@ from pathlib import Path
 import os
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
-from urllib.parse import urljoin, urlsplit, urlparse, unquote
+from urllib.parse import urljoin, urlsplit, unquote
+
 
 def check_for_redirect(response):
     return response.history
@@ -24,7 +25,13 @@ def parse_book_page(url, id_book):
     str_book = soup.find('h1').text.split(" :: ")
     img_path = urljoin(url, soup.find(class_='bookimage').find('img')['src'])
 
-    return str_book[0].strip(), str_book[1].strip(), img_path
+    comments = soup.find(id='content').find_all('span', class_='black')
+    print(str_book[0].strip())
+    for comment in comments:
+        print(comment.text)
+    print()
+
+    return str_book[0].strip(), str_book[1].strip(), img_path, comments
 
 
 def download_txt(url, filename, folder='books/'):
@@ -53,6 +60,7 @@ def find_filename_in_url(url_string):
     _, filename = os.path.split(filepath)
     return filename
 
+
 def download_image(url, folder='images/', params=''):
     name_img = find_filename_in_url(url)
     os.makedirs(folder, exist_ok=True)
@@ -61,20 +69,20 @@ def download_image(url, folder='images/', params=''):
     with open(Path(folder, name_img), 'wb') as file:
         file.write(response.content)
 
+
 if __name__ == '__main__':
     book_folder = 'books'
 
     url_txt = 'https://tululu.org/txt.php'
     url_page_book = 'https://tululu.org/b'
 
-
     for id_book in range(1, 11):
         try:
-            title, _, url_img = parse_book_page(url_page_book, id_book)
+            title, _, url_img, comments = parse_book_page(url_page_book, id_book)
             filename = f'{id_book}. {title}.txt'
             download_txt(f'{url_txt}?id={id_book}', filename, book_folder)
             download_image(url_img)
 
         except requests.HTTPError:
             print(f'На сайте нет книги {id_book} {title}')
-
+            print()
