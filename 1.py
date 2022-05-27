@@ -4,6 +4,7 @@ import os
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlsplit, unquote
+import argparse
 
 
 def check_for_redirect(response):
@@ -32,9 +33,12 @@ def parse_book_page(url, id_book):
     for genre in soup.find('span', class_='d_book').find_all('a'):
         genres.append(genre.text)
 
-    print(str_book[0].strip())
-    #for comment in comments:
-    #    print(comment)
+    print(f'Заголовок: {str_book[0].strip()}')
+    print(f'Автор: {str_book[0].strip()}')
+    print(f'Жанры: {genres}')
+    print(f'{len(comments)} комментарий/я/ев: ')
+    for i, comment in enumerate(comments):
+        print(f'{i+1}. {comment}')
     print(genres)
     print()
 
@@ -82,14 +86,29 @@ def download_image(url, folder='images/', params=''):
     with open(Path(folder, name_img), 'wb') as file:
         file.write(response.content)
 
+def create_args_parser():
+    parser = argparse.ArgumentParser(description='Программа для скачивания книг с .. по ..')
+    parser.add_argument ('start_id', nargs='?', default='1', help='С какого номера книги начинать', type=int)
+    parser.add_argument('end_id', nargs='?', default='10', help='Каким номером заканчивать', type=int)
+
+    return parser
+
 
 if __name__ == '__main__':
+    parser = create_args_parser()
+    args = parser.parse_args()
+
     book_folder = 'books'
 
     url_txt = 'https://tululu.org/txt.php'
     url_page_book = 'https://tululu.org/b'
 
-    for id_book in range(1, 11):
+    start = args.start_id
+    end = args.end_id
+
+    print(f'Программа начинает скачивание книг с {start} по {end}')
+    for id_book in range(start, end+1):
+        book_data = None
         try:
             book_data = parse_book_page(url_page_book, id_book)
             filename = f'{id_book}. {book_data["title"]}.txt'
@@ -97,5 +116,7 @@ if __name__ == '__main__':
             download_image(book_data['img_path'])
 
         except requests.HTTPError:
-            print(f'На сайте нет книги {id_book} {book_data["title"]}')
-            print()
+            print(f'На сайте нет книги {id_book} ', end='')
+            if not(book_data is None):
+                print(book_data["title"])
+            print(end='\n')
