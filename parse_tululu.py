@@ -1,3 +1,7 @@
+#!/usr/bin/python
+"""
+Скрипт для скачивания книг из библиотеки tululu.org
+"""
 import argparse
 import os
 from pathlib import Path
@@ -9,39 +13,24 @@ from pathvalidate import sanitize_filename
 
 
 def check_for_redirect(response):
-    return response.history
+    if response.history:
+        raise requests.HTTPError
 
 
-def parse_book_page(url, id_book):
+def parse_book_page(page, url):
     """Функция для парсинга названия и автора книги.
     Args:
+        page (str): html содержание страницы
         url (str): Cсылка на сайт, с которого хочется скачать.
-        id_book (int): номер книги.
     Returns:
-        str, str: Название и автор книги."""
-    response = requests.get(f'{url}{id_book}/')
-    response.raise_for_status()
-    if check_for_redirect(response):
-        raise requests.HTTPError
-    soup = BeautifulSoup(response.text, 'lxml')
+        dict: словарь с характеристиками книги."""
+    soup = BeautifulSoup(page, 'lxml')
     str_book = soup.find('h1').text.split(" :: ")
     img_path = urljoin(url, soup.find(class_='bookimage').find('img')['src'])
     comments = []
-    for comment in soup.find(id='content').find_all('span', class_='black'):
-        comments.append(comment.text)
-    comments_soup = soup.find(id='content').find_all('span', class_='black')
+    [comments.append(comment.text) for comment in soup.find(id='content').find_all('span', class_='black')]
     genres = []
-    for genre in soup.find('span', class_='d_book').find_all('a'):
-        genres.append(genre.text)
-
-    print(f'Заголовок: {str_book[0].strip()}')
-    print(f'Автор: {str_book[0].strip()}')
-    print(f'Жанры: {genres}')
-    print(f'{len(comments)} комментарий/я/ев: ')
-    for i, comment in enumerate(comments):
-        print(f'{i+1}. {comment}')
-    print(genres)
-    print()
+    [genres.append(genre.text) for genre in soup.find('span', class_='d_book').find_all('a')]
 
     return {
         'title': str_book[0].strip(),
@@ -52,20 +41,19 @@ def parse_book_page(url, id_book):
     }
 
 
-def download_txt(url, filename, folder='books/'):
+def download_txt(url, filename, folder='books/', params=''):
     """Функция для скачивания текстовых файлов.
     Args:
         url (str): Cсылка на текст, который хочется скачать.
         filename (str): Имя файла, с которым сохранять.
         folder (str): Папка, куда сохранять.
+        params (str): параметры для GET запроса, по умолчанию пустая строка
     Returns:
-        str: Путь до файла, куда сохранён текст.
-    """
+        str: Путь до файла, куда сохранён текст."""
     os.makedirs(folder, exist_ok=True)
-    response = requests.get(url)
+    response = requests.get(url, params=params)
     response.raise_for_status()
-    if check_for_redirect(response):
-        raise requests.HTTPError
+    check_for_redirect(response)
     path_file = Path(folder, sanitize_filename(filename))
     with open(path_file, 'wb') as file:
         file.write(response.text.encode())
@@ -80,11 +68,17 @@ def find_filename_in_url(url_string):
 
 
 def download_image(url, folder='images/', params=''):
-    name_img = find_filename_in_url(url)
+    """Функция для скачивания картинок.
+        Args:
+            url (str): Cсылка на сайт, с которого хочется скачать.
+            folder (str): директория для сохранения картинок, по умолчанию images/
+            params (str): параметры для GET запроса, по умолчанию пустая строка
+    """
+    img_name = find_filename_in_url(url)
     os.makedirs(folder, exist_ok=True)
     response = requests.get(url, params=params)
     response.raise_for_status()
-    with open(Path(folder, name_img), 'wb') as file:
+    with open(Path(folder, img_name), 'wb') as file:
         file.write(response.content)
 
 
@@ -92,33 +86,60 @@ def create_args_parser():
     parser = argparse.ArgumentParser(description='Программа для скачивания книг с .. по ..')
     parser.add_argument('start_id', nargs='?', default='1', help='С какого номера книги начинать', type=int)
     parser.add_argument('end_id', nargs='?', default='10', help='Каким номером заканчивать', type=int)
-
     return parser
 
 
-if __name__ == '__main__':
+def download_book_page(url, id_book, params=''):
+    """Функция для скачивания html содержания страницы.
+        Args:
+            url (str): url на раздел библиотеки с книгами.
+            id_book (str): id книги, которую надо скачать.
+            params (str): параметры для GET запроса, по умолчанию пустая строка
+        Returns:
+            str: html-код страницы.
+        """
+    response = requests.get(f'{url}{id_book}/', params=params)
+    response.raise_for_status()
+    check_for_redirect(response)
+    return response.text
+
+
+def main():
     parser = create_args_parser()
     args = parser.parse_args()
-
-    book_folder = 'books'
-
-    url_txt = 'https://tululu.org/txt.php'
-    url_page_book = 'https://tululu.org/b'
-
     start = args.start_id
     end = args.end_id
 
+    book_folder = 'books'
+    url_txt = 'https://tululu.org/txt.php'
+    url_page_book = 'https://tululu.org/b'
+
     print(f'Программа начинает скачивание книг с {start} по {end}')
-    for id_book in range(start, end+1):
-        book_data = None
+    for id_book in range(start, end + 1):
+        book_properties = None
         try:
-            book_data = parse_book_page(url_page_book, id_book)
-            filename = f'{id_book}. {book_data["title"]}.txt'
-            download_txt(f'{url_txt}?id={id_book}', filename, book_folder)
-            download_image(book_data['img_path'])
+            book_properties = parse_book_page(
+                download_book_page(url_page_book, id_book),
+                url_page_book
+            )
+            filename = f'{id_book}. {book_properties["title"]}.txt'
+            params = {'id': id_book}
+            download_txt(url_txt, filename, book_folder, params)
+            download_image(book_properties['img_path'])
+
+            print(f'Заголовок: {book_properties["title"]}')
+            print(f'Автор: {book_properties["author"]}')
+            print(f'Жанры: {book_properties["genres"]}')
+            print(f'{len(book_properties["comments"])} комментарий/я/ев: ')
+            for i, comment in enumerate(book_properties["comments"]):
+                print(f'{i + 1}. {comment}')
+            print()
 
         except requests.HTTPError:
             print(f'На сайте нет книги {id_book} ', end='')
-            if not(book_data is None):
-                print(book_data["title"])
+            if book_properties:
+                print(book_properties["title"])
             print(end='\n')
+
+if __name__ == '__main__':
+    main()
