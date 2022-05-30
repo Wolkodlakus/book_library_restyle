@@ -1,10 +1,11 @@
-import requests
-from pathlib import Path
+import argparse
 import os
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit, unquote
+
+import requests
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
-from urllib.parse import urljoin, urlsplit, unquote
-import argparse
 
 
 def check_for_redirect(response):
@@ -86,9 +87,10 @@ def download_image(url, folder='images/', params=''):
     with open(Path(folder, name_img), 'wb') as file:
         file.write(response.content)
 
+
 def create_args_parser():
     parser = argparse.ArgumentParser(description='Программа для скачивания книг с .. по ..')
-    parser.add_argument ('start_id', nargs='?', default='1', help='С какого номера книги начинать', type=int)
+    parser.add_argument('start_id', nargs='?', default='1', help='С какого номера книги начинать', type=int)
     parser.add_argument('end_id', nargs='?', default='10', help='Каким номером заканчивать', type=int)
 
     return parser
