@@ -24,7 +24,7 @@ ______
 
 ### Пример запуска скрипта: 
 ```commandline
-(venv) python 1.py 20 22 
+(venv) python parse_tululu.py 20 22 
 ```
 ![img.png](img.png)
 
