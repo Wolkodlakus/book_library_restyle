@@ -97,7 +97,7 @@ def main():
 
     book_folder = 'books'
     url_txt = 'https://tululu.org/txt.php'
-    url_page_book = 'https://tululu.org/b'
+    url_main = 'https://tululu.org'
 
     print(f'Программа начинает скачивание книг с {start} по {end}')
     id_book = start
@@ -105,12 +105,12 @@ def main():
     while (id_book <= end) and (attempts < 8):
         book_properties = None
         try:
-            response = requests.get(f'{url_page_book}{id_book}/')
+            response = requests.get(f'{url_main}/b{id_book}/')
             response.raise_for_status()
             check_for_redirect(response)
             book_properties = parse_book_page(
                 response.text,
-                url_page_book
+                url_main
             )
             filename = f'{id_book}. {book_properties["title"]}.txt'
             params = {'id': id_book, }
