@@ -105,12 +105,13 @@ def main():
     while (id_book <= end) and (attempts < 8):
         book_properties = None
         try:
-            response = requests.get(f'{url_main}/b{id_book}/')
+            url_book = f'{url_main}/b{id_book}/'
+            response = requests.get(url_book)
             response.raise_for_status()
             check_for_redirect(response)
             book_properties = parse_book_page(
                 response.text,
-                url_main
+                url_book
             )
             filename = f'{id_book}. {book_properties["title"]}.txt'
             params = {'id': id_book, }
