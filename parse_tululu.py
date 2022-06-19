@@ -4,6 +4,7 @@
 """
 import argparse
 import os
+import time
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, unquote
 
@@ -27,10 +28,9 @@ def parse_book_page(page, url):
     soup = BeautifulSoup(page, 'lxml')
     str_book = soup.find('h1').text.split(" :: ")
     img_path = urljoin(url, soup.find(class_='bookimage').find('img')['src'])
-    comments = []
-    [comments.append(comment.text) for comment in soup.find(id='content').find_all('span', class_='black')]
-    genres = []
-    [genres.append(genre.text) for genre in soup.find('span', class_='d_book').find_all('a')]
+
+    comments = [comment.text for comment in soup.find(id='content').find_all('span', class_='black')]
+    genres = [genre.text for genre in soup.find('span', class_='d_book').find_all('a')]
 
     return {
         'title': str_book[0].strip(),
@@ -47,7 +47,7 @@ def download_txt(url, filename, folder='books/', params=''):
         url (str): Cсылка на текст, который хочется скачать.
         filename (str): Имя файла, с которым сохранять.
         folder (str): Папка, куда сохранять.
-        params (str): параметры для GET запроса, по умолчанию пустая строка
+        params (dict): параметры для GET запроса, по умолчанию пустая строка
     Returns:
         str: Путь до файла, куда сохранён текст."""
     os.makedirs(folder, exist_ok=True)
@@ -89,21 +89,6 @@ def create_args_parser():
     return parser
 
 
-def download_book_page(url, id_book, params=''):
-    """Функция для скачивания html содержания страницы.
-        Args:
-            url (str): url на раздел библиотеки с книгами.
-            id_book (str): id книги, которую надо скачать.
-            params (str): параметры для GET запроса, по умолчанию пустая строка
-        Returns:
-            str: html-код страницы.
-        """
-    response = requests.get(f'{url}{id_book}/', params=params)
-    response.raise_for_status()
-    check_for_redirect(response)
-    return response.text
-
-
 def main():
     parser = create_args_parser()
     args = parser.parse_args()
@@ -112,18 +97,24 @@ def main():
 
     book_folder = 'books'
     url_txt = 'https://tululu.org/txt.php'
-    url_page_book = 'https://tululu.org/b'
+    url_main = 'https://tululu.org'
 
     print(f'Программа начинает скачивание книг с {start} по {end}')
-    for id_book in range(start, end + 1):
+    id_book = start
+    attempts = 0
+    while (id_book <= end) and (attempts < 8):
         book_properties = None
         try:
+            url_book = f'{url_main}/b{id_book}/'
+            response = requests.get(url_book)
+            response.raise_for_status()
+            check_for_redirect(response)
             book_properties = parse_book_page(
-                download_book_page(url_page_book, id_book),
-                url_page_book
+                response.text,
+                url_book
             )
             filename = f'{id_book}. {book_properties["title"]}.txt'
-            params = {'id': id_book}
+            params = {'id': id_book, }
             download_txt(url_txt, filename, book_folder, params)
             download_image(book_properties['img_path'])
 
@@ -134,12 +125,22 @@ def main():
             for i, comment in enumerate(book_properties["comments"]):
                 print(f'{i + 1}. {comment}')
             print()
-
+            id_book += 1
+            attempts = 0
         except requests.HTTPError:
             print(f'На сайте нет книги {id_book} ', end='')
             if book_properties:
                 print(book_properties["title"])
             print(end='\n')
+            id_book += 1
+            attempts = 0
+        except requests.ConnectionError:
+            print(f'Обрыв связи на книге {id_book}. Попытка {attempts+1}')
+            time.sleep(2**attempts)
+            attempts += 1
+    if attempts == 8:
+        print(f'Не удалось восстановить связь. Книги с {id_book} не скачаны')
+
 
 if __name__ == '__main__':
     main()
