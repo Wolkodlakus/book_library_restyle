@@ -31,9 +31,15 @@ def main():
 
     soup = BeautifulSoup(response.text, 'lxml')
 
+    book_items = soup.find_all(class_='d_book')
+    for book_item in book_items:
+        book_page = urljoin(url_scifi_cat, book_item.find_all('a')[1]['href'])
+        print(book_page)
+
+
     book_page = urljoin(url_scifi_cat, soup.find(class_='d_book').find_all('a')[1]['href'])
 
-    pprint(book_page)
+    #print(book_page)
 
 
 if __name__ == '__main__':
