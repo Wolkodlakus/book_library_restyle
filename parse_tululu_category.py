@@ -2,23 +2,23 @@
 """
 Скрипт для скачивания книг из библиотеки tululu.org
 """
-import argparse
-import os
-from pathlib import Path
+import json
+
 from urllib.parse import urljoin, urlsplit, unquote
-from pprint import pprint
 
 import requests
 from bs4 import BeautifulSoup
-from pathvalidate import sanitize_filename
+
+from parse_tululu import parse_book_page, download_txt,  download_image
 
 
 def check_for_redirect(response):
     if response.history:
         raise requests.HTTPError
 
-def parse_category_pages(url_category, page_count):
 
+def parse_category_pages(url_category, page_count):
+    book_pages = []
     for number_page in range(1, page_count+1):
         if number_page > 1:
             url_page = f'{url_category}/{number_page}'
@@ -34,8 +34,8 @@ def parse_category_pages(url_category, page_count):
         book_items = soup.find_all(class_='d_book')
         for book_item in book_items:
             book_page = urljoin(url_page, book_item.find_all('a')[1]['href'])
-            print(book_page)
-
+            book_pages.append(book_page)
+    return book_pages
 
 
 def main():
@@ -45,9 +45,49 @@ def main():
     url_page_book = 'https://tululu.org/b'
     url_scifi_cat = 'https://tululu.org/l55/'
 
-    parse_category_pages(url_scifi_cat, 10)
+    book_folder = 'books'
+    url_txt = 'https://tululu.org/txt.php'
+    url_main = 'https://tululu.org'
 
+    print(f'Программа начинает скачивание книг SciFi по 4 страницу')
+    book_pages = parse_category_pages(url_scifi_cat, 4)
+    print(book_pages)
+    books_properties = []
+    for book_page in book_pages:
 
+        book_properties = None
+        try:
+            id_book = urlsplit(unquote(book_page)).path.strip('/')[1:]
+            print(id_book)
+            response = requests.get(book_page)
+            response.raise_for_status()
+            check_for_redirect(response)
+            book_properties = parse_book_page(
+                response.text,
+                book_page
+            )
+            filename = f'{id_book}. {book_properties["title"]}.txt'
+            params = {'id': id_book, }
+            download_txt(url_txt, filename, book_folder, params)
+            download_image(book_properties['img_path'])
+
+            print(f'Заголовок: {book_properties["title"]}')
+            print(f'Автор: {book_properties["author"]}')
+            print(f'Жанры: {book_properties["genres"]}')
+            print(f'{len(book_properties["comments"])} комментарий/я/ев: ')
+            for i, comment in enumerate(book_properties["comments"]):
+                print(f'{i + 1}. {comment}')
+            print()
+
+        except requests.HTTPError:
+            print(f'На сайте нет книги {id_book} ', end='')
+            if book_properties:
+                print(book_properties['title'])
+            print(end='\n')
+        books_properties.append(book_properties)
+
+    with open('books_scifi.json', 'w''', encoding='utf8') as my_file:
+        json.dump(books_properties, my_file, ensure_ascii=False)
 
 
 if __name__ == '__main__':
