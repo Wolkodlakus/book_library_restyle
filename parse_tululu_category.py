@@ -30,10 +30,12 @@ def parse_category_pages(url_category, page_count):
         check_for_redirect(response)
 
         soup = BeautifulSoup(response.text, 'lxml')
-
-        book_items = soup.find_all(class_='d_book')
+        book_items_selector = ".d_book tr:nth-child(2) td a"
+        book_items = soup.select(book_items_selector)
+        print(book_items)
         for book_item in book_items:
-            book_page = urljoin(url_page, book_item.find_all('a')[1]['href'])
+            book_page = urljoin(url_page, book_item['href'])
+            print(book_page)
             book_pages.append(book_page)
     return book_pages
 
@@ -42,12 +44,7 @@ def main():
 
     book_folder = 'books'
     url_txt = 'https://tululu.org/txt.php'
-    url_page_book = 'https://tululu.org/b'
     url_scifi_cat = 'https://tululu.org/l55/'
-
-    book_folder = 'books'
-    url_txt = 'https://tululu.org/txt.php'
-    url_main = 'https://tululu.org'
 
     print(f'Программа начинает скачивание книг SciFi по 4 страницу')
     book_pages = parse_category_pages(url_scifi_cat, 4)
@@ -56,9 +53,8 @@ def main():
     for book_page in book_pages:
 
         book_properties = None
+        id_book = urlsplit(unquote(book_page)).path.strip('/')[1:]
         try:
-            id_book = urlsplit(unquote(book_page)).path.strip('/')[1:]
-            print(id_book)
             response = requests.get(book_page)
             response.raise_for_status()
             check_for_redirect(response)

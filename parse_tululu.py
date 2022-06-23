@@ -26,11 +26,11 @@ def parse_book_page(page, url):
     Returns:
         dict: словарь с характеристиками книги."""
     soup = BeautifulSoup(page, 'lxml')
-    str_book = soup.find('h1').text.split(" :: ")
-    img_path = urljoin(url, soup.find(class_='bookimage').find('img')['src'])
+    str_book = soup.select_one('h1').text.split(" :: ")
+    img_path = urljoin(url, soup.select_one('.bookimage a img')['src'])
 
-    comments = [comment.text for comment in soup.find(id='content').find_all('span', class_='black')]
-    genres = [genre.text for genre in soup.find('span', class_='d_book').find_all('a')]
+    comments = [comment.text for comment in soup.select('.texts .black')]
+    genres = [genre.text for genre in soup.select('span.d_book a')]
 
     return {
         'title': str_book[0].strip(),
