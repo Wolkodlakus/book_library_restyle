@@ -55,6 +55,10 @@ def create_args_parser():
     parser = argparse.ArgumentParser(description='Программа для скачивания книг с .. по ..')
     parser.add_argument('start_page', nargs='?', default='1', help='С какой страницы начинать', type=int)
     parser.add_argument('end_page', nargs='?', default='0', help='Какой страницей заканчивать', type=int)
+    parser.add_argument('--dest_folder', default='', help='Папка для сохранения')
+    parser.add_argument('--skip_imgs', default='False', help='Не скачивать картинки', action='store_true')
+    parser.add_argument('--skip_txt', default='False', help='Не скачивать книги', action='store_true')
+    parser.add_argument('--json_path', default='', help='Путь к json файлу')
     return parser
 
 
@@ -63,6 +67,11 @@ def main():
     args = parser.parse_args()
     start = args.start_page
     end = args.end_page
+
+    dest_folder = args.dest_folder
+    skip_images = args.skip_imgs
+    skip_texts = args.skip_txt
+    json_path = args.json_path
 
     book_folder = 'books'
     url_txt = 'https://tululu.org/txt.php'
